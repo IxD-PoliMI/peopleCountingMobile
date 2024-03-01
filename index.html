@@ -1,104 +1,187 @@
 <<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Webcam JS</title>
-	<link rel="shortcut icon" href="a.jpg">
-	<style>
-		#cam{
-			border: solid;
-			border-radius: 9px;
-		    width: 320px;
-		    height: 240px;
-		    border: 1px solid black;
-		}
-		#btn{
-			background: white;
-			border: solid;
-			border-radius: 8px;
-			margin: 1vh;
-			font-size: 3vh;
-		}
-		#photo{
-			border-radius: 9px;
-		}
-	</style>
+	<html>
 
-	<script type="text/javascript" src="webcam.js"></script>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>People Couting</title>
+		<style>
+			#results {
+				font-family: monospace;
+				white-space: pre;
+			}
+		</style>
+
+		<script type="text/javascript" src="webcam.js"></script>
+		<script type="text/javascript">
+
+			function grf() {
+				// Ensure there's an image in the photo div
+				var imgElement = document.getElementById('photo').querySelector('img');
+				if (!imgElement) {
+					alert('No image found. Please take a snapshot first.');
+					return;
+				}
+
+				// Create a canvas element dynamically
+				var canvas = document.createElement('canvas');
+				var ctx = canvas.getContext('2d');
+
+				// Set canvas size to match the image
+				canvas.width = imgElement.naturalWidth;
+				canvas.height = imgElement.naturalHeight;
+
+				// Draw the image onto the canvas
+				ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+
+				// Now you can access the image data
+				var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				var data = imageData.data;
+				var hexData = [];
+				var myOutputString = "";
+
+				for (var i = 0; i < data.length; i += 4) {
+					// Skipping the alpha channel by not passing it into RGBAToHex
+					myOutputString += RGBAToHex(data[i], data[i + 1], data[i + 2], data[i + 3])
+				}
+
+				// Join the hex values and put them in the textarea, slice off the last ", "
+				myOutputString = myOutputString.substring(0, myOutputString.length - 2);  // remove last ,"
+				document.getElementById('features').value = myOutputString
+			}
+
+			function RGBAToHex(r, g, b, a) {
+				r = r.toString(16);
+				g = g.toString(16);
+				b = b.toString(16);
+
+				if (r.length == 1)
+					r = "0" + r;
+				if (g.length == 1)
+					g = "0" + g;
+				if (b.length == 1)
+					b = "0" + b;
+
+				return "0x" + r + g + b + ", ";
+			}
+
+			// Function to draw detections on the existing snapshot
+			function drawOnExistingSnapshot() {
+				var photoDiv = document.getElementById('photo');
+				var imgElement = photoDiv.querySelector('img');
+				if (!imgElement) {
+					alert('No snapshot found. Please take a snapshot first.');
+					return;
+				}
+
+				// Create a canvas and replace the image with it in the photoDiv
+				var canvas = document.createElement('canvas');
+				var ctx = canvas.getContext('2d');
+				photoDiv.innerHTML = ''; // Clear the photo div
+				photoDiv.appendChild(canvas);
+
+				var img = new Image();
+				img.onload = function () {
+					// Set canvas size to match the image
+					canvas.width = img.width;
+					canvas.height = img.height;
+					ctx.drawImage(img, 0, 0, img.width, img.height);
+
+					// Fetch and parse the detection results from the results paragraph
+					var resultsParagraph = document.getElementById('results').textContent;
+					var detectionResults = JSON.parse(resultsParagraph);
+
+					// Call drawDetections with the parsed results
+					drawDetections(ctx, detectionResults.results);
+				};
+				img.src = imgElement.src; // Use the existing snapshot source
+			}
+
+			function drawDetections(ctx, detections) {
+				detections.forEach(det => {
+					// Draw circle for each detection
+					ctx.beginPath();
+					ctx.arc(det.x, det.y, 5, 0, 2 * Math.PI);
+					ctx.strokeStyle = 'red';
+					ctx.stroke();
+
+					// Draw label and value below the circle
+					ctx.font = '12px Arial';
+					ctx.fillStyle = 'red';
+					ctx.fillText(`${det.label}: ${det.value.toFixed(2)}`, det.x - 10, det.y + 15);
+				});
+			}
+
+			// Function to stop the webcam
+			function stopWebcam() {
+				Webcam.reset();
+			}
+
+			// Function to restart the webcam
+			function restartWebcam() {
+				Webcam.attach('#cam');
+			}
+
+		</script>
 	</head>
-<body>
-	<center>
-	<div id="cam"></div>
-	<button id="btn" onclick="copc()">Take Snapshot</button> 
-	<div id="photo"></div>
-	</center>
-	<script>
-	 Webcam.set({
-	     width: 320,
-	     height: 240,
-	     image_format: 'jpeg',
-	     jpeg_quality: 90
-	 });
-	 Webcam.attach('#cam');
-	
-	function copc() {
-	   Webcam.snap( function(data_uri) {
-	      document.getElementById('photo').innerHTML = 
-	          '<img src="'+data_uri+'"/>';
-	    });
-	}
-	</script>
-</body>
-</html>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Browser inference demo</title>
+	<body>
+		<center>
+			<span id="cam"></span> <span id="photo"></span> <br>
+			<button id="btn" onclick="copc()">Take Snapshot</button>
+			<button id="stopBtn" onclick="stopWebcam()">Stop Camera</button>
+			<button id="restartBtn" onclick="restartWebcam()">Restart Camera</button>
+		</center>
+		<script>
+			Webcam.set({
+				width: 96,
+				height: 96,
+				image_format: 'jpeg',
+				jpeg_quality: 90
+			});
+			Webcam.attach('#cam');
 
-    <style>
-        #features {
-            width: 50%;
-            font-size: 18px;
-        }
+			function copc() {
+				Webcam.snap(function (data_uri) {
+					document.getElementById('photo').innerHTML =
+						'<img src="' + data_uri + '"/>';
+				});
+			}
+		</script>
 
-        #results {
-            font-family: monospace;
-            white-space: pre;
-        }
-    </style>
+		<button id="generate-raw-features" onclick="grf()">generate raw features</button>
 
-    <p>
-        <input type="text" id="features" placeholder="Paste your features here">
-    </p>
-    <p>
-        <button id="run-inference">Run inference</button>
-    </p>
-    <p id="results"></p>
+		<p>
+			<input type="text" id="features"
+				placeholder="Take a snaphot and press the button generate generate raw features, or paste your features here">
+		</p>
+		<p>
+			<button id="run-inference">Run inference</button>
+		</p>
+		<p id="results"></p>
 
-    <script src="edge-impulse-standalone.js"></script>
-    <script src="run-impulse.js"></script>
-    <script>
-        (async () => {
-            var classifier = new EdgeImpulseClassifier();
-            await classifier.init();
+		<script src="edge-impulse-standalone.js"></script>
+		<script src="run-impulse.js"></script>
+		<script>
 
-            let project = classifier.getProjectInfo();
-            document.querySelector('h1').textContent = project.owner + ' / ' + project.name + ' (version ' + project.deploy_version + ')';
+			(async () => {
 
-            document.querySelector('#run-inference').onclick = () => {
-                try {
-                    let features = document.querySelector('#features').value.split(',').map(x => Number(x.trim()));
-                    let res = classifier.classify(features);
-                    document.querySelector('#results').textContent = JSON.stringify(res, null, 4);
-                }
-                catch (ex) {
-                    alert('Failed to classify: ' + (ex.message || ex.toString()));
-                }
-            };
-        })();
-    </script>
-</body>
-</html>
+				var classifier = new EdgeImpulseClassifier();
+				await classifier.init();
+
+				document.querySelector('#run-inference').onclick = () => {
+					try {
+						let features = document.querySelector('#features').value.split(',').map(x => Number(x.trim()));
+						let res = classifier.classify(features);
+						document.querySelector('#results').textContent = JSON.stringify(res, null, 4);
+						drawOnExistingSnapshot();
+					}
+					catch (ex) {
+						alert('Failed to classify: ' + (ex.message || ex.toString()));
+					}
+				};
+			})();
+		</script>
+	</body>
+
+	</html>
