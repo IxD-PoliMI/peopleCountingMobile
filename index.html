@@ -122,54 +122,12 @@
 				Webcam.attach('#cam');
 			}
 
-			let currentFacingMode = 'user'; // Default to the front camera
-
-			document.getElementById('swapCamera').addEventListener('click', function () {
-				currentFacingMode = (currentFacingMode === 'user' ? 'environment' : 'user');
-				startCamera(currentFacingMode);
-			});
-
-			function startCamera(facingMode) {
-				if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-					// Stop the current stream if it's already running
-					if (window.stream) {
-						window.stream.getTracks().forEach(track => {
-							track.stop();
-						});
-					}
-
-					// Define constraints for the video stream
-					var constraints = {
-						video: {
-							facingMode: facingMode
-						}
-					};
-
-					// Access the webcam
-					navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
-						window.stream = stream; // Make stream available to browser console
-						var videoElement = document.querySelector('#cam');
-						if ("srcObject" in videoElement) {
-							videoElement.srcObject = stream;
-						} else {
-							// For older browsers
-							videoElement.src = window.URL.createObjectURL(stream);
-						}
-						videoElement.play();
-						restartWebcam()
-					}).catch(function (error) {
-						console.log("Error accessing the camera: ", error);
-					});
-				}
-			}
-
 		</script>
 	</head>
 
 	<body>
 		<center>
 			<span id="cam"></span> <span id="photo"></span> <br>
-			<button id="swapCamera">Swap Camera</button>
 			<button id="btn" onclick="copc()">Take Snapshot</button>
 			<button id="stopBtn" onclick="stopWebcam()">Stop Camera</button>
 			<button id="restartBtn" onclick="restartWebcam()">Restart Camera</button>
